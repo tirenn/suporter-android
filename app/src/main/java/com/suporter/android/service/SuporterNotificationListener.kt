@@ -128,6 +128,26 @@ class SuporterNotificationListener : NotificationListenerService() {
             return
         }
 
+        if (!prefs.hasActiveProject()) {
+            Log.d(TAG, "User has no active overlay project.")
+            db.webhookLogDao().insertLog(
+                WebhookLogEntity(
+                    sourcePackage = packageName,
+                    sourceAppName = appName,
+                    notificationTitle = title,
+                    notificationText = bodyText,
+                    extractedAmount = amount,
+                    requestUrl = "${serverUrl.trimEnd('/')}/api/v1/webhooks/donation",
+                    requestHeaders = "-",
+                    requestPayload = "-",
+                    responseCode = 0,
+                    responseBody = "Pengiriman dibatalkan: Akun streamer belum memiliki project OBS overlay aktif",
+                    status = "NO_PROJECT"
+                )
+            )
+            return
+        }
+
         if (!prefs.isWebhookForwardingEnabled()) {
             Log.d(TAG, "Webhook forwarding is disabled by user.")
             db.webhookLogDao().insertLog(

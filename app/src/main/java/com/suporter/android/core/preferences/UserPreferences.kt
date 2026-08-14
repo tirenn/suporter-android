@@ -69,4 +69,9 @@ class UserPreferences(context: Context) {
     fun setWebhookForwardingEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("webhook_forwarding_enabled", enabled).apply()
     }
+
+    fun hasActiveProject(): Boolean = prefs.getBoolean("has_active_project", true)
+    fun setHasActiveProject(hasProject: Boolean) {
+        prefs.edit().putBoolean("has_active_project", hasProject).apply()
+    }
 }

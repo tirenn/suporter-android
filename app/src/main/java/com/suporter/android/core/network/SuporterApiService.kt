@@ -41,4 +41,9 @@ interface SuporterApiService {
         @Header("X-Suporter-Signature") signature: String,
         @Body rawBody: RequestBody
     ): Response<ResponseBody>
+
+    @retrofit2.http.GET("api/v1/projects")
+    suspend fun getUserProjects(
+        @Header("Authorization") authorization: String
+    ): Response<com.suporter.android.data.model.ProjectsResponse>
 }

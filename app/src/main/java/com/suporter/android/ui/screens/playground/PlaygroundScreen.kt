@@ -99,6 +99,24 @@ fun PlaygroundScreen(
                 )
             }
 
+            // Missing Project Warning Card
+            if (!preferences.hasActiveProject()) {
+                AppCard(
+                    borderColor = WarningAmber.copy(alpha = 0.4f),
+                    backgroundColor = WarningAmber.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        text = "⚠️ Project Overlay Belum Dibuat",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = WarningAmber)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Pengujian webhook dinonaktifkan karena akun Anda belum memiliki project OBS Overlay di server. Buka dashboard web Suporter untuk membuat project overlay terlebih dahulu.",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = TextPrimary)
+                    )
+                }
+            }
+
             // Rate Limit Active Banner
             if (countdownSeconds > 0) {
                 AppCard(
@@ -185,7 +203,7 @@ fun PlaygroundScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                val isButtonEnabled = !isRunning && countdownSeconds == 0
+                val isButtonEnabled = !isRunning && countdownSeconds == 0 && preferences.hasActiveProject()
 
                 Button(
                     onClick = {

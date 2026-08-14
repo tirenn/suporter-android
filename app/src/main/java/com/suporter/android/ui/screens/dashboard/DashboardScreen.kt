@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -31,20 +32,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.suporter.android.core.preferences.UserPreferences
+import com.suporter.android.data.repository.AuthRepository
 import com.suporter.android.data.repository.LogRepository
 import com.suporter.android.service.KeepAliveForegroundService
 import com.suporter.android.ui.components.AppCard
 import com.suporter.android.ui.components.MetricCard
 import com.suporter.android.ui.components.WarningCard
 import com.suporter.android.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun DashboardScreen(
     preferences: UserPreferences,
+    authRepository: AuthRepository,
     logRepository: LogRepository,
     onNavigateToPlayground: () -> Unit,
     onNavigateToApps: () -> Unit,
@@ -54,6 +58,7 @@ fun DashboardScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
 
     val totalCount by logRepository.totalCount.collectAsState(initial = 0)
     val successCount by logRepository.successCount.collectAsState(initial = 0)
@@ -63,13 +68,41 @@ fun DashboardScreen(
     var isBatteryOptimizationIgnored by remember { mutableStateOf(checkBatteryOptimization(context)) }
     var isKeepAliveRunning by remember { mutableStateOf(preferences.isKeepAliveEnabled()) }
     var isWebhookForwardingEnabled by remember { mutableStateOf(preferences.isWebhookForwardingEnabled()) }
+    var hasActiveProject by remember { mutableStateOf(preferences.hasActiveProject()) }
 
-    // Observe app lifecycle ON_RESUME so permissions and battery optimizations refresh automatically upon returning from system Settings
+    // Query active projects from server
+    fun syncProjectStatus() {
+        scope.launch {
+            val token = preferences.getAccessToken()
+            val serverUrl = preferences.getServerUrl()
+            if (!token.isNullOrBlank()) {
+                val res = authRepository.checkUserProjects(serverUrl, token)
+                res.onSuccess { projects ->
+                    val hasProjects = projects.isNotEmpty()
+                    hasActiveProject = hasProjects
+                    if (!hasProjects) {
+                        isWebhookForwardingEnabled = false
+                        preferences.setWebhookForwardingEnabled(false)
+                    }
+                }
+            }
+        }
+    }
+
+    // Trigger sync immediately on screen mount
+    LaunchedEffect(Unit) {
+        isNotificationAccessGranted = checkNotificationAccess(context)
+        isBatteryOptimizationIgnored = checkBatteryOptimization(context)
+        syncProjectStatus()
+    }
+
+    // Observe app lifecycle ON_RESUME so permissions and project statuses refresh automatically
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 isNotificationAccessGranted = checkNotificationAccess(context)
                 isBatteryOptimizationIgnored = checkBatteryOptimization(context)
+                syncProjectStatus()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -133,6 +166,15 @@ fun DashboardScreen(
                     fontSize = 12.sp,
                     color = WarningAmber
                 )
+            )
+        }
+
+        // ⚠️ Missing Project Warning Card (Only shown if user has no project)
+        if (!hasActiveProject) {
+            WarningCard(
+                title = "Project Overlay Belum Dibuat",
+                description = "Akun Anda belum memiliki project OBS Overlay di server. Buka dashboard web Suporter untuk membuat project overlay terlebih dahulu.",
+                isWarning = true
             )
         }
 
@@ -266,7 +308,10 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(if (isWebhookForwardingEnabled) SuccessGreen.copy(alpha = 0.15f) else ErrorRed.copy(alpha = 0.15f))
+                                .background(
+                                    if (isWebhookForwardingEnabled) SuccessGreen.copy(alpha = 0.15f)
+                                    else ErrorRed.copy(alpha = 0.15f)
+                                )
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
@@ -297,6 +342,10 @@ fun DashboardScreen(
                 Switch(
                     checked = isWebhookForwardingEnabled,
                     onCheckedChange = { checked ->
+                        if (!hasActiveProject && checked) {
+                            Toast.makeText(context, "Buat project overlay di dashboard web terlebih dahulu!", Toast.LENGTH_LONG).show()
+                            return@Switch
+                        }
                         isWebhookForwardingEnabled = checked
                         preferences.setWebhookForwardingEnabled(checked)
                     },
@@ -370,10 +419,17 @@ fun DashboardScreen(
 
         NavigationButton(
             title = "Playground & Test Webhook",
-            subtitle = "Simulasikan donasi dan uji respon webhook secara langsung ke OBS",
+            subtitle = if (hasActiveProject) "Simulasikan donasi dan uji respon webhook secara langsung ke OBS" else "Dinonaktifkan — Wajib buat project di web terlebih dahulu",
             icon = Icons.Default.PlayArrow,
-            color = PrimaryEmerald,
-            onClick = onNavigateToPlayground
+            color = if (hasActiveProject) PrimaryEmerald else TextMuted,
+            enabled = hasActiveProject,
+            onClick = {
+                if (hasActiveProject) {
+                    onNavigateToPlayground()
+                } else {
+                    Toast.makeText(context, "Buat project overlay di dashboard web terlebih dahulu!", Toast.LENGTH_LONG).show()
+                }
+            }
         )
 
         NavigationButton(
@@ -410,6 +466,7 @@ private fun NavigationButton(
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Surface(
@@ -428,7 +485,7 @@ private fun NavigationButton(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(color.copy(alpha = 0.15f)),
+                    .background(color.copy(alpha = if (enabled) 0.15f else 0.05f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, contentDescription = title, tint = color, modifier = Modifier.size(22.dp))
@@ -437,7 +494,7 @@ private fun NavigationButton(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary)
+                    style = MaterialTheme.typography.titleMedium.copy(color = if (enabled) TextPrimary else TextMuted)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -445,7 +502,7 @@ private fun NavigationButton(
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = TextMuted)
                 )
             }
-            Text(text = "→", fontSize = 18.sp, color = TextMuted)
+            Text(text = "→", fontSize = 18.sp, color = if (enabled) TextMuted else TextMuted.copy(alpha = 0.4f))
         }
     }
 }

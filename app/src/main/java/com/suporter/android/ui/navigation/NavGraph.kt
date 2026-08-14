@@ -58,6 +58,7 @@ fun NavGraph(
         composable(Routes.DASHBOARD) {
             DashboardScreen(
                 preferences = app.preferences,
+                authRepository = authRepository,
                 logRepository = logRepository,
                 onNavigateToPlayground = { navController.navigate(Routes.PLAYGROUND) },
                 onNavigateToApps = { navController.navigate(Routes.APPS) },
