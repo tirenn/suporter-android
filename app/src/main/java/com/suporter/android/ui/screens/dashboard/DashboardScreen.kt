@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.suporter.android.R
 import com.suporter.android.core.preferences.UserPreferences
 import com.suporter.android.data.repository.AuthRepository
 import com.suporter.android.data.repository.LogRepository
@@ -126,15 +129,25 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = preferences.getName() ?: "Streamer",
-                        style = MaterialTheme.typography.titleLarge.copy(color = TextPrimary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "Logo",
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(18.dp))
                     )
-                    Text(
-                        text = "@${preferences.getUsername() ?: ""}",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = PrimaryEmerald)
-                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = preferences.getName() ?: "Streamer",
+                            style = MaterialTheme.typography.titleLarge.copy(color = TextPrimary)
+                        )
+                        Text(
+                            text = "@${preferences.getUsername() ?: ""}",
+                            style = MaterialTheme.typography.bodyMedium.copy(color = PrimaryEmerald)
+                        )
+                    }
                 }
 
                 IconButton(

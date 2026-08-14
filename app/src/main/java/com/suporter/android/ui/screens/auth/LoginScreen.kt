@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.suporter.android.R
 import com.suporter.android.data.repository.AuthRepository
 import com.suporter.android.ui.theme.*
 import kotlinx.coroutines.launch
@@ -70,15 +73,14 @@ fun LoginScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Logo & Badge
-            Box(
+            // Header Logo
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "Suporter Logo",
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(PrimaryEmerald.copy(alpha = 0.15f))
-                    .padding(16.dp)
-            ) {
-                Text(text = "⚡", fontSize = 32.sp)
-            }
+                    .size(190.dp)
+                    .clip(RoundedCornerShape(36.dp))
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
