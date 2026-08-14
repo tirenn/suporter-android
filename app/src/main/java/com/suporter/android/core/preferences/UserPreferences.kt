@@ -64,4 +64,9 @@ class UserPreferences(context: Context) {
     fun setKeepAliveEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("keep_alive_enabled", enabled).apply()
     }
+
+    fun isWebhookForwardingEnabled(): Boolean = prefs.getBoolean("webhook_forwarding_enabled", true)
+    fun setWebhookForwardingEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("webhook_forwarding_enabled", enabled).apply()
+    }
 }

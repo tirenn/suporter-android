@@ -128,6 +128,26 @@ class SuporterNotificationListener : NotificationListenerService() {
             return
         }
 
+        if (!prefs.isWebhookForwardingEnabled()) {
+            Log.d(TAG, "Webhook forwarding is disabled by user.")
+            db.webhookLogDao().insertLog(
+                WebhookLogEntity(
+                    sourcePackage = packageName,
+                    sourceAppName = appName,
+                    notificationTitle = title,
+                    notificationText = bodyText,
+                    extractedAmount = amount,
+                    requestUrl = "${serverUrl.trimEnd('/')}/api/v1/webhooks/donation",
+                    requestHeaders = "-",
+                    requestPayload = "-",
+                    responseCode = 0,
+                    responseBody = "Pengiriman Webhook sedang dinonaktifkan oleh pengguna (Paused)",
+                    status = "PAUSED"
+                )
+            )
+            return
+        }
+
         val requestObj = WebhookDonationRequest(amount = amount)
         val rawJsonBody = gson.toJson(requestObj)
         val timestamp = System.currentTimeMillis() / 1000

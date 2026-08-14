@@ -62,6 +62,7 @@ fun DashboardScreen(
     var isNotificationAccessGranted by remember { mutableStateOf(checkNotificationAccess(context)) }
     var isBatteryOptimizationIgnored by remember { mutableStateOf(checkBatteryOptimization(context)) }
     var isKeepAliveRunning by remember { mutableStateOf(preferences.isKeepAliveEnabled()) }
+    var isWebhookForwardingEnabled by remember { mutableStateOf(preferences.isWebhookForwardingEnabled()) }
 
     // Observe app lifecycle ON_RESUME so permissions and battery optimizations refresh automatically upon returning from system Settings
     DisposableEffect(lifecycleOwner) {
@@ -245,7 +246,69 @@ fun DashboardScreen(
             )
         }
 
-        // Keep-Alive Service Control Card
+        // 1. Webhook Forwarding Service Control Card
+        AppCard(borderColor = if (isWebhookForwardingEnabled) PrimaryEmerald.copy(alpha = 0.35f) else BgCardBorder) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Pengiriman Webhook Otomatis",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = if (isWebhookForwardingEnabled) TextPrimary else TextMuted
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isWebhookForwardingEnabled) SuccessGreen.copy(alpha = 0.15f) else ErrorRed.copy(alpha = 0.15f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (isWebhookForwardingEnabled) "AKTIF" else "JEDA",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isWebhookForwardingEnabled) SuccessGreen else ErrorRed
+                                )
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = if (isWebhookForwardingEnabled)
+                            "Notifikasi pembayaran yang terdeteksi akan otomatis dikirim ke webhook server & memicu alert OBS."
+                        else
+                            "Pengiriman webhook dijeda. Notifikasi tetap dicatat di log lokal namun TIDAK dikirim ke server.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 12.sp,
+                            color = if (isWebhookForwardingEnabled) TextSecondary else TextMuted
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Switch(
+                    checked = isWebhookForwardingEnabled,
+                    onCheckedChange = { checked ->
+                        isWebhookForwardingEnabled = checked
+                        preferences.setWebhookForwardingEnabled(checked)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.Black,
+                        checkedTrackColor = PrimaryEmerald
+                    )
+                )
+            }
+        }
+
+        // 2. Keep-Alive Service Control Card
         AppCard(borderColor = if (isKeepAliveRunning) PrimaryEmerald.copy(alpha = 0.3f) else BgCardBorder) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -255,17 +318,25 @@ fun DashboardScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Layanan Keep-Alive Latar Belakang",
-                        style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary)
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
-                        text = if (isKeepAliveRunning) "Aktif — Aplikasi tetap berjalan saat layar terkunci" else "Nonaktif — Notifikasi mungkin terlewat saat HP tidur",
+                        text = if (isKeepAliveRunning)
+                            "Aktif — Menampilkan notifikasi persisten di status bar agar Android tidak mematikan service saat layar HP terkunci."
+                        else
+                            "Nonaktif — Notifikasi mungkin terlewat saat HP masuk mode tidur (Doze Mode).",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 12.sp,
                             color = if (isKeepAliveRunning) SuccessGreen else TextMuted
                         )
                     )
                 }
+
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Switch(
                     checked = isKeepAliveRunning,

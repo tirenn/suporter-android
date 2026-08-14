@@ -1,7 +1,13 @@
 package com.suporter.android.ui.screens.auth
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -38,6 +45,8 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     var serverUrl by remember { mutableStateOf(initialServerUrl) }
+    var showServerSettings by remember { mutableStateOf(false) }
+
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -117,39 +126,6 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Server URL Input
-                Text(
-                    text = "Backend Server URL",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = TextMuted,
-                        fontSize = 11.sp
-                    )
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                    value = serverUrl,
-                    onValueChange = { serverUrl = it },
-                    placeholder = { Text("http://10.0.2.2:8080", color = TextMuted) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Uri,
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryEmerald,
-                        unfocusedBorderColor = BgCardBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Username Input
                 Text(
                     text = "Username Streamer",
@@ -211,9 +187,10 @@ fun LoginScreen(
                     },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
+                        imeAction = if (showServerSettings) ImeAction.Next else ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
                         onDone = { focusManager.clearFocus() }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -223,6 +200,46 @@ fun LoginScreen(
                         unfocusedTextColor = TextPrimary
                     )
                 )
+
+                // Optional Expandable Server Settings (Hidden by default)
+                AnimatedVisibility(
+                    visible = showServerSettings,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Server Backend URL (Kustom)",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextMuted,
+                                fontSize = 11.sp
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = serverUrl,
+                            onValueChange = { serverUrl = it },
+                            placeholder = { Text("http://10.0.2.2:8080", color = TextMuted) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Uri,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = { focusManager.clearFocus() }
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryEmerald,
+                                unfocusedBorderColor = BgCardBorder,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            )
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -266,6 +283,33 @@ fun LoginScreen(
                             )
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Toggle Server Settings Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showServerSettings = !showServerSettings }
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = TextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (showServerSettings) "Sembunyikan Pengaturan Server" else "Pengaturan Server (Lanjutan)",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = TextMuted,
+                            fontSize = 11.sp
+                        )
+                    )
                 }
             }
         }
