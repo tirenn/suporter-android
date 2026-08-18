@@ -42,6 +42,11 @@ interface SuporterApiService {
         @Body rawBody: RequestBody
     ): Response<ResponseBody>
 
+    @retrofit2.http.GET("api/v1/profile")
+    suspend fun getProfile(
+        @Header("Authorization") authorization: String
+    ): Response<com.suporter.android.data.model.User>
+
     @retrofit2.http.GET("api/v1/projects")
     suspend fun getUserProjects(
         @Header("Authorization") authorization: String

@@ -48,6 +48,11 @@ import com.suporter.android.ui.components.WarningCard
 import com.suporter.android.ui.theme.*
 import kotlinx.coroutines.launch
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     preferences: UserPreferences,
@@ -73,22 +78,61 @@ fun DashboardScreen(
     var isWebhookForwardingEnabled by remember { mutableStateOf(preferences.isWebhookForwardingEnabled()) }
     var hasActiveProject by remember { mutableStateOf(preferences.hasActiveProject()) }
 
-    // Query active projects from server
-    fun syncProjectStatus() {
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    // Full status sync (validates JWT, account status, and project presence)
+    fun syncFullStatus(isManualRefresh: Boolean = false) {
         scope.launch {
             val token = preferences.getAccessToken()
             val serverUrl = preferences.getServerUrl()
-            if (!token.isNullOrBlank()) {
-                val res = authRepository.checkUserProjects(serverUrl, token)
-                res.onSuccess { projects ->
-                    val hasProjects = projects.isNotEmpty()
-                    hasActiveProject = hasProjects
-                    if (!hasProjects) {
-                        isWebhookForwardingEnabled = false
-                        preferences.setWebhookForwardingEnabled(false)
-                    }
+
+            if (token.isNullOrBlank()) {
+                preferences.clearSession()
+                onLogout()
+                return@launch
+            }
+
+            // 1. Verify profile & active status
+            val profileRes = authRepository.checkProfile(serverUrl, token)
+            if (profileRes.isFailure) {
+                val err = profileRes.exceptionOrNull()?.message ?: ""
+                if (err.contains("SESSION_EXPIRED") || err.contains("401") || err.contains("404") || err.contains("dinonaktifkan")) {
+                    Toast.makeText(context, "Sesi berakhir atau akun tidak aktif. Silakan login kembali.", Toast.LENGTH_LONG).show()
+                    preferences.clearSession()
+                    onLogout()
+                    return@launch
                 }
             }
+
+            // 2. Synchronize project status
+            val projRes = authRepository.checkUserProjects(serverUrl, token)
+            if (projRes.isSuccess) {
+                val projects = projRes.getOrNull() ?: emptyList()
+                val hasProjects = projects.isNotEmpty()
+                hasActiveProject = hasProjects
+                if (!hasProjects) {
+                    isWebhookForwardingEnabled = false
+                    preferences.setWebhookForwardingEnabled(false)
+                }
+                if (isManualRefresh) {
+                    Toast.makeText(context, "Data berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                val err = projRes.exceptionOrNull()?.message ?: ""
+                if (err.contains("SESSION_EXPIRED") || err.contains("401") || err.contains("404")) {
+                    Toast.makeText(context, "Sesi telah berakhir. Silakan login kembali.", Toast.LENGTH_LONG).show()
+                    preferences.clearSession()
+                    onLogout()
+                    return@launch
+                }
+            }
+        }
+    }
+
+    if (pullToRefreshState.isRefreshing) {
+        LaunchedEffect(true) {
+            syncFullStatus(isManualRefresh = true)
+            pullToRefreshState.endRefresh()
         }
     }
 
@@ -96,7 +140,7 @@ fun DashboardScreen(
     LaunchedEffect(Unit) {
         isNotificationAccessGranted = checkNotificationAccess(context)
         isBatteryOptimizationIgnored = checkBatteryOptimization(context)
-        syncProjectStatus()
+        syncFullStatus(isManualRefresh = false)
     }
 
     // Observe app lifecycle ON_RESUME so permissions and project statuses refresh automatically
@@ -105,7 +149,7 @@ fun DashboardScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 isNotificationAccessGranted = checkNotificationAccess(context)
                 isBatteryOptimizationIgnored = checkBatteryOptimization(context)
-                syncProjectStatus()
+                syncFullStatus(isManualRefresh = false)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -114,73 +158,55 @@ fun DashboardScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BgDark)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .nestedScroll(pullToRefreshState.nestedScrollConnection)
     ) {
-        // Streamer Profile Header Card
-        AppCard(borderColor = BgCardBorder) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.app_logo),
-                        contentDescription = "Logo",
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = preferences.getName() ?: "Streamer",
-                            style = MaterialTheme.typography.titleLarge.copy(color = TextPrimary)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Streamer Profile Header Card (Without Webhook Key)
+            AppCard(borderColor = BgCardBorder) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(18.dp))
                         )
-                        Text(
-                            text = "@${preferences.getUsername() ?: ""}",
-                            style = MaterialTheme.typography.bodyMedium.copy(color = PrimaryEmerald)
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = preferences.getName() ?: "Streamer",
+                                style = MaterialTheme.typography.titleLarge.copy(color = TextPrimary)
+                            )
+                            Text(
+                                text = "@${preferences.getUsername() ?: ""}",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = PrimaryEmerald)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onLogout,
+                        colors = IconButtonDefaults.iconButtonColors(contentColor = ErrorRed)
+                    ) {
+                        Icon(Icons.Default.PowerSettingsNew, contentDescription = "Logout")
                     }
                 }
-
-                IconButton(
-                    onClick = onLogout,
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = ErrorRed)
-                ) {
-                    Icon(Icons.Default.PowerSettingsNew, contentDescription = "Logout")
-                }
             }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = BgCardBorder)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Webhook Key & Secret Preview
-            Text(
-                text = "WEBHOOK KEY",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextMuted
-                )
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = preferences.getWebhookKey() ?: "-",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 12.sp,
-                    color = WarningAmber
-                )
-            )
-        }
 
         // ⚠️ Missing Project Warning Card (Only shown if user has no project)
         if (!hasActiveProject) {
@@ -470,6 +496,14 @@ fun DashboardScreen(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+
+    PullToRefreshContainer(
+        state = pullToRefreshState,
+        modifier = Modifier.align(Alignment.TopCenter),
+        containerColor = BgCard,
+        contentColor = PrimaryEmerald
+    )
     }
 }
 
