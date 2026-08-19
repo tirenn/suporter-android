@@ -209,8 +209,10 @@ class SuporterNotificationListener : NotificationListenerService() {
             )
 
             if (response.isSuccessful) {
+                com.suporter.android.core.analytics.AnalyticsHelper(applicationContext).logWebhookSent(appName, amount, true)
                 Log.d(TAG, "Webhook dispatched successfully for Rp $amount from $appName!")
             } else {
+                com.suporter.android.core.analytics.AnalyticsHelper(applicationContext).logWebhookSent(appName, amount, false)
                 Log.e(TAG, "Webhook failed with HTTP $code: $respBodyString")
             }
 

@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -45,6 +46,7 @@ fun PlaygroundScreen(
     database: AppDatabase,
     onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val gson = remember { Gson() }
 
@@ -294,6 +296,7 @@ fun PlaygroundScreen(
                                 )
 
                                 if (webhookResp.isSuccessful) {
+                                    com.suporter.android.core.analytics.AnalyticsHelper(context).logTestWebhook(totalAmountToVerify, true)
                                     testResult = TestExecutionResult(
                                         isSuccess = true,
                                         stepName = "Semua Langkah Berhasil!",
@@ -301,6 +304,7 @@ fun PlaygroundScreen(
                                         rawResponse = respBody
                                     )
                                 } else {
+                                    com.suporter.android.core.analytics.AnalyticsHelper(context).logTestWebhook(totalAmountToVerify, false)
                                     val parsedWebhookErr = ErrorParser.parse(respBody, "Webhook gagal (${respCode})")
                                     if (respCode == 429) {
                                         val retryAfter = ErrorParser.parseRetryAfter(respBody) ?: 60
