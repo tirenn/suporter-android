@@ -32,10 +32,25 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: "Grant execute permissions for gradlew"
-        run: chmod +x gradlew 2>/dev/null || true
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+          elif [ -f "./android/gradlew" ]; then
+            chmod +x ./android/gradlew
+          fi
 
       - name: "Run Unit Tests"
-        run: gradle testDebugUnitTest --no-daemon || ./gradlew testDebugUnitTest --no-daemon
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew testDebugUnitTest --no-daemon
+          elif [ -f "./android/gradlew" ]; then
+            cd android && ./gradlew testDebugUnitTest --no-daemon
+          fi
 
       - name: "Build Debug APK"
-        run: gradle assembleDebug --no-daemon || ./gradlew assembleDebug --no-daemon
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug --no-daemon
+          elif [ -f "./android/gradlew" ]; then
+            cd android && ./gradlew assembleDebug --no-daemon
+          fi

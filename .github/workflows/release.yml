@@ -30,18 +30,33 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: "Grant execute permissions for gradlew"
-        run: chmod +x gradlew 2>/dev/null || true
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+          elif [ -f "./android/gradlew" ]; then
+            chmod +x ./android/gradlew
+          fi
 
       - name: "Run Unit Tests"
-        run: gradle testDebugUnitTest --no-daemon || ./gradlew testDebugUnitTest --no-daemon
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew testDebugUnitTest --no-daemon
+          elif [ -f "./android/gradlew" ]; then
+            cd android && ./gradlew testDebugUnitTest --no-daemon
+          fi
 
       - name: "Build Release APK"
-        run: gradle assembleRelease assembleDebug --no-daemon || ./gradlew assembleRelease assembleDebug --no-daemon
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleRelease assembleDebug --no-daemon
+          elif [ -f "./android/gradlew" ]; then
+            cd android && ./gradlew assembleRelease assembleDebug --no-daemon
+          fi
 
-      - name: "Find and Rename APKs"
+      - name: "Find and Collect APKs"
         run: |
           mkdir -p build-apks
-          find app/build/outputs/apk/ -name "*.apk" -exec cp {} build-apks/ \;
+          find . -name "*.apk" -not -path "*/build-apks/*" -exec cp {} build-apks/ \;
           ls -la build-apks/
 
       - name: "Upload APK Artifacts"
