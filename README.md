@@ -4,6 +4,40 @@ A native Android application built with **Kotlin**, **Jetpack Compose**, **Clean
 
 ---
 
+## 🤖 GitHub Actions CI / Automated APK Builds
+
+We provide automated GitHub Actions workflows for Android:
+
+### 1. `Android CI / PR Checks` (`.github/workflows/ci.yml`)
+- **Trigger**: Pull Requests and direct merges into `main`/`master`.
+- **Actions**: Sets up JDK 17, executes unit tests (`testDebugUnitTest`), and verifies the debug build (`assembleDebug`).
+
+### 2. `Build and Release Android APK on Tag` (`.github/workflows/release.yml`)
+- **Trigger**: Pushing any tag (e.g. `v1.0.0`).
+- **Actions**:
+  1. Runs unit test suite.
+  2. Compiles production release and debug APKs (`assembleRelease`, `assembleDebug`).
+  3. Uploads the built `.apk` files as a GitHub Actions workflow artifact.
+  4. Automatically publishes a **GitHub Release** with the `.apk` files attached for one-click downloading!
+
+---
+
+## 📥 How to Download the Built APK
+
+When you push a tag (e.g., `git tag v1.0.0 && git push origin v1.0.0`):
+
+1. **Option A: GitHub Releases (Easiest)**
+   - Go to your repository on GitHub ➔ Click **Releases** (on the right sidebar).
+   - Click on your release tag (e.g. `v1.0.0`).
+   - Under **Assets**, click on the `.apk` file (e.g. `app-release.apk` or `app-debug.apk`) to download and install on your phone.
+
+2. **Option B: GitHub Actions Artifacts**
+   - Go to **Actions** ➔ Click on the latest **Build and Release Android APK on Tag** workflow run.
+   - Scroll down to the **Artifacts** section at the bottom.
+   - Click **`suporter-android-apks-v1.0.0`** to download the ZIP containing the `.apk` files.
+
+---
+
 ## ✨ Features
 
 1. **Streamer Mobile Authentication**:
@@ -42,7 +76,7 @@ A native Android application built with **Kotlin**, **Jetpack Compose**, **Clean
 
 ---
 
-## 🛠️ How to Build & Run
+## 🛠️ How to Build & Run Locally
 
 ### Prerequisites
 - **Android Studio**: Hedgehog (2023.1.1) or newer.
@@ -51,23 +85,6 @@ A native Android application built with **Kotlin**, **Jetpack Compose**, **Clean
 
 ### Opening in Android Studio
 1. Open Android Studio.
-2. Select **File > Open** and choose the `suporter-android` folder.
+2. Select **File > Open** and choose the `android` folder.
 3. Allow Gradle to sync dependencies.
 4. Run on an Android Emulator or connected physical device (Android 8.0+).
-
----
-
-## 🔐 Webhook Authentication Headers
-
-When sending payment notifications, the app sends:
-```http
-POST /api/v1/webhooks/donation
-Host: api.yourdomain.com
-Content-Type: application/json
-X-Suporter-Key: wk_a1b2c3d4...
-X-Suporter-Timestamp: 1723642800
-X-Suporter-Signature: 5d41402abc4b2a76b9719d911017c592...
-
-{"amount": 50142}
-```
-Where `X-Suporter-Signature = HMAC-SHA256(webhook_secret, timestamp + "." + raw_body)`.
