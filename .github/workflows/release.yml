@@ -29,6 +29,44 @@ jobs:
       - name: "Setup Gradle"
         uses: gradle/actions/setup-gradle@v4
 
+      - name: "Ensure google-services.json exists"
+        run: |
+          TARGET_DIR="app"
+          if [ -d "android/app" ]; then
+            TARGET_DIR="android/app"
+          fi
+          if [ ! -f "$TARGET_DIR/google-services.json" ]; then
+            echo "Creating fallback google-services.json for Release build..."
+            mkdir -p "$TARGET_DIR"
+            cat << 'EOF' > "$TARGET_DIR/google-services.json"
+          {
+            "project_info": {
+              "project_number": "896698486091",
+              "project_id": "suporter-id",
+              "storage_bucket": "suporter-id.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:896698486091:android:fa956ff03799137febacce",
+                  "android_client_info": {
+                    "package_name": "com.suporter.android"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyArvnBykIqFig-uKhU-RAcL-tRoiuNmbC0"
+                  }
+                ],
+                "services": {}
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+          fi
+
       - name: "Grant execute permissions for gradlew"
         run: |
           if [ -f "./gradlew" ]; then
